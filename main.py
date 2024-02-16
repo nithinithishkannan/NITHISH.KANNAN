@@ -1,100 +1,233 @@
-from bs4 import BeautifulSoup as bs
-import requests
-import html5lib
-import pandas as pd
-url = "https://en.wikipedia.org/wiki/2023_Karnataka_Legislative_Assembly_election"
-d1 = requests.get(url)
-bs1 = bs(d1.text, 'html5lib')
-const_tab = bs1.findAll('table', attrs={"class": "wikitable sortable"})
-row_no = 0
-const_result = {}
-for tr in const_tab[0].findAll("tr"):
-    row_no += 1
-    dist_check = 0
-    if row_no < 3:
-        continue
+#from Scripts.bottle import request
+from flask import Flask, render_template, flash, request,session
+#from wtforms import Form, TextField, TextAreaField, validators, StringField, SubmitField
+from werkzeug.utils import secure_filename
+import mysql.connector
+import tkinter.messagebox
+#import os, shutil
 
-    td = [x.text for x in tr.findAll("td")]
-    if len(td) == 0:
-        continue
+app = Flask(__name__)
+app.config.from_object(__name__)
+app.config['SECRET_KEY'] = '7d441f27d441f27567d441f2b6176a'
 
-    const_no, const_name = '', ''
-    if len(td) == 12:
-        const_no, const_name = td[1].strip(), td[2].strip()
-    else:
-        const_no, const_name = td[0].strip(), td[1].strip()
-    const_result[const_no] = const_name
+@app.route("/")
+def homepage():
+    return render_template('index.html')
 
-# print(const_result)
+@app.route("/admin")
+def admin():
 
-def get_top_count(data):
-    count_dt = list(data.keys())
-    count_dt.sort(reverse=True)
-    return {x:data[x] for x in count_dt[:5]}
+    return render_template('admin.html')
+@app.route("/shome")
+def shome():
 
-count_per_party = {}
-sl_no = 1
-with open("data-content.csv","w") as fl:
-    fl.write("slno,const no,const name,fp,fpc,sp,spc,tp,tpc,frp,frpc,fvp,fvpc,total votes, winning party")
-    for const_no,const_name in const_result.items():
-        url = f"https://results.eci.gov.in/ResultAcGenMay2023/ConstituencywiseS10{const_no}.htm?ac={const_no}"
-        if int(const_no) == 10:
-            break
-
-        dt = requests.get(url)
-        bs_dt = bs(dt.text, "html5lib")
-
-        data_table = bs_dt.findAll("table",attrs={"style":"margin: auto; width: 100%; font-family: Verdana; border: solid 1px black;font-weight:lighter"})
-        if len(data_table) == 0:
-            continue
-
-        row_content = data_table[0].findAll("tr", attrs={"style":"font-size:12px;"})
-        if len(row_content) == 0:
-            continue
-
-        count_per_party = {}
-        for t in row_content:
-            td = [x.text for x in t.findAll("td")]
-            count = int(td[-2])
-            party = td[2]
-            if count not in count_per_party:
-                count_per_party[count] = party
-            else:
-                count_per_party[count] += f"##{party}"
-        #print (count_per_party)
-        result_data = get_top_count(count_per_party)
-        #print (result_data)
-        rst_lst = f'{sl_no},{const_no},{const_name},'+','.join([f"{result_data[x]},{x}" for x in result_data]) + f",{sum(list(result_data.keys()))},{list(result_data.values())[0]}"
-        # print (rst_lst)  _ to print ht eweb scap list
-        fl.write("\n%s"%(rst_lst))
-        sl_no += 1
-
-        #if sl_no > 11:
-        #    break
+    return render_template('shome.html')
+@app.route("/view")
+def view():
 
 
+    return render_template('view.html')
+@app.route("/view11", methods=['GET', 'POST'])
+def view11():
+    error = None
+    if request.method == 'POST':
+       date=request.form['date']
+       conn1 = mysql.connector.connect(user='root', password='', host='localhost', database='apartment')
+       cursor1 = conn1.cursor()
+       cursor1.execute("SELECT * from visitors where date='"+date+"' ")
+       data1 = cursor1.fetchall()
 
-data_df = pd.read_csv("data-content.csv")
-data_df
+       return render_template('view.html', data=data1)
 
-inp = ''
-try:
-    inp = int(input("Enter the const number: "))
 
-    if inp > len(data_df):
-        print("Please enter a valid const number")
-    else:
-        print("success")
-except:
-    print("Please enter a valid number")
+@app.route("/today")
+def today():
+    conn = mysql.connector.connect(user='root', password='', host='localhost', database='apartment')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * from visitors")
+    data = cursor.fetchall()
 
-d = data_df[data_df["const no"] == inp].reset_index(inplace=False).drop(['index'], axis=1)
-d = [d[x][0] for x in d.columns][3:-2]
+    return render_template('today.html',data=data)
+@app.route("/overall")
+def overall():
+    return render_template('overall.html')
+@app.route("/user")
+def user():
+    return render_template('user.html')
+@app.route("/views")
+def viewu():
+    conn = mysql.connector.connect(user='root', password='', host='localhost', database='apartment')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * from emp")
+    data = cursor.fetchall()
 
-x = [d[i] for i in range(0, len(d), 2)]
-y = [d[i] for i in range(1, len(d), 2)]
-print(x)
-print(y)
-import matplotlib.pyplot as plt
-plt.pie(y, labels=x)
-plt.show()
+    return render_template('views.html',data=data)
+@app.route("/viewe")
+def viewe():
+    conn = mysql.connector.connect(user='root', password='', host='localhost', database='apartment')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * from emp")
+    data = cursor.fetchall()
+
+    return render_template('viewe.html',data=data)
+@app.route("/viewg")
+def viewg():
+    conn = mysql.connector.connect(user='root', password='', host='localhost', database='apartment')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * from book where status='3'")
+    data = cursor.fetchall()
+
+    return render_template('viewg.html',data=data)
+
+
+@app.route("/adminhome")
+def adminhome():
+
+
+    return render_template('adminhome.html')
+@app.route("/about")
+def about():
+
+
+    return render_template('about.html')
+
+@app.route("/adminlogin", methods=['GET', 'POST'])
+def adminlogin():
+    error = None
+    if request.method == 'POST':
+       if request.form['uname'] == 'admin' or request.form['password'] == 'admin':
+
+           conn1 = mysql.connector.connect(user='root', password='', host='localhost', database='apartment')
+           cursor1 = conn1.cursor()
+           cursor1.execute("SELECT * from emp ")
+           data1 = cursor1.fetchall()
+
+           return render_template('adminhome.html',data1=data1)
+
+       else:
+        return render_template('index.html', error=error)
+
+
+@app.route("/userlogin", methods=['GET', 'POST'])
+def userlogin():
+    error = None
+    if request.method == 'POST':
+        username = request.form['uname']
+        password = request.form['password']
+        session['fname'] = request.form['uname']
+
+        conn = mysql.connector.connect(user='root', password='', host='localhost', database='apartment')
+        cursor = conn.cursor()
+        cursor.execute("SELECT * from emp where uname='" + username + "' and psw='" + password + "'")
+        data = cursor.fetchone()
+        if data is None:
+            alert = 'Username or Password is wrong'
+            return render_template('goback.html', data=alert)
+        else:
+            conn = mysql.connector.connect(user='root', password='', host='localhost', database='apartment')
+            cursor = conn.cursor()
+            cursor.execute("SELECT * from emp where uname='" + username + "' and psw='" + password + "'")
+            data = cursor.fetchone()
+            name=data[1]
+            session['eid']=data[0]
+
+            return render_template('shome.html')
+
+
+
+@app.route("/addsecurity", methods=['GET', 'POST'])
+def addsecurity():
+    if request.method == 'POST':
+
+        name1 = request.form['name']
+
+        gender = request.form['gender']
+        age = request.form['age']
+        email = request.form['email']
+
+        phone = request.form['phone']
+
+        shf = request.form['shift']
+        address = request.form['address']
+
+        uname = request.form['uname']
+        password = request.form['psw']
+
+
+        conn = mysql.connector.connect(user='root', password='', host='localhost', database='apartment')
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO emp VALUES ('','" + name1 + "','" + gender + "','" + age + "','"+ email+"','"+phone+"','" + address + "','" + shf + "','"+uname+"','"+password+"')")
+        conn.commit()
+        conn.close()
+
+
+    return render_template('adminhome.html')
+
+@app.route("/newvisitor", methods=['GET', 'POST'])
+def newvisitor():
+    if request.method == 'POST':
+        import random
+
+        otp=random.randint(1000, 9000)
+        from datetime import date
+        today = str(date.today())
+        print(today)
+
+        name1 = request.form['name']
+
+        gender = request.form['gender']
+
+
+        phone = request.form['phone']
+
+        intime = request.form['intime']
+        otime = request.form['otime']
+        ublock = request.form['block']
+        session['name']=name1
+
+
+
+        conn = mysql.connector.connect(user='root', password='', host='localhost', database='apartment')
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO visitors VALUES ('','" + name1 + "','" + gender + "','" + today + "','"+ intime+"','"+otime+"','" + ublock + "','"+phone+"','"+str(otp)+"')")
+        conn.commit()
+        conn.close()
+
+
+    return render_template('otp.html')
+
+@app.route("/overalldata", methods=['GET', 'POST'])
+def overalldata():
+    error = None
+    if request.method == 'POST':
+       date=request.form['date']
+       conn1 = mysql.connector.connect(user='root', password='', host='localhost', database='apartment')
+       cursor1 = conn1.cursor()
+       cursor1.execute("SELECT * from visitors where date='"+date+"' ")
+       data1 = cursor1.fetchall()
+
+       return render_template('overall.html', data=data1)
+
+@app.route("/otp", methods=['GET', 'POST'])
+def otp():
+    error = None
+    if request.method == 'POST':
+       date=request.form['otp']
+       name1=session['name']
+       print(name1)
+       print(date)
+       conn1 = mysql.connector.connect(user='root', password='', host='localhost', database='apartment')
+       cursor1 = conn1.cursor()
+       cursor1.execute("SELECT * from visitors where name='"+name1+"' and otp='"+date+"' ")
+       data1 = cursor1.fetchone()
+       if data1 is None:
+           return 'OTP Password is wrong'
+       else:
+           return render_template('view.html')
+
+
+
+if __name__ == '__main__':
+    app.run(debug=True, use_reloader=True)
